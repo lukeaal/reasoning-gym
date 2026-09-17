@@ -10,21 +10,9 @@ If you run evaluations and want to contribute your results, please create a pull
 
 ### Syllogism dataset version 2
 
-Syllogism items now carry `metadata.dataset_version = 2` and explicitly allow
-empty categories. Universal statements do not imply existence. Both displayed
-premises are evaluated together, including for inversion questions, using exact
-Venn-region entailment. Earlier labels could incorrectly accept undistributed
-middle terms or assume existence without a premise establishing it.
-
-The generator's sampling changed, so the same seed/index does not identify the
-same question across versions. Regenerate saved samples (including practice
-samples) and rerun affected model baselines and aggregates against version 2.
-Keep earlier results labeled as legacy; do not present them as version 2 scores
-or transfer responses by index. The gallery is regenerated automatically by the
-repository workflow.
-Model result traces and separate practice generators are not stored in this
-repository, so their regeneration and baseline recalibration require the
-corresponding external artifacts.
+Items with `metadata.dataset_version = 2` allow empty categories and evaluate both
+premises together. Labels and seeded samples differ from earlier versions;
+regenerate saved samples and rerun affected baselines before comparing results.
 
 ## Overview
 

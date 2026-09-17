@@ -376,11 +376,8 @@ def test_syllogism_curriculum():
     assert partially_decreased_cfg.allow_some_not == False
 
 
-# Independent reference: concrete sets over three individuals, not Venn occupancy.
-# A counterexample needs at most one witness for each existential premise and
-# one for the negated conclusion, hence three individuals suffice. Universal
-# statements survive restriction to those witnesses. Unused individuals can be
-# outside every category, so empty categories are covered too.
+# Three witnesses suffice: one per existential premise and one for the negated
+# conclusion. Restricting to witnesses preserves universal statements.
 _REFERENCE_SUBSETS = tuple(frozenset(i for i in range(3) if mask & (1 << i)) for mask in range(8))
 _REFERENCE_MODELS = tuple(product(_REFERENCE_SUBSETS, repeat=3))
 
@@ -409,7 +406,6 @@ def _reference_entails(premises, conclusion):
 
 
 def test_all_figures_and_inversions_against_independent_sets():
-    """All 4^3 moods, four figures, six conclusion directions, both premise orders."""
     dataset = SyllogismDataset(SyllogismConfig())
     valid_standard_forms = 0
     for q1, q2, qc in product(Quantifier, repeat=3):
@@ -439,7 +435,7 @@ def test_reported_fish_countermodel():
     fish, insects, mortals = 0, 1, 2
     premises = ((Quantifier.ALL, fish, insects), (Quantifier.SOME, insects, mortals))
     conclusion = (Quantifier.SOME, fish, mortals)
-    # Every named category is nonempty; this also refutes existential-import validity.
+    # Invalid even with all categories nonempty.
     model = ({0}, {0, 1}, {1})
     assert all(_set_statement_holds(p, model) for p in premises)
     assert not _set_statement_holds(conclusion, model)
@@ -451,11 +447,10 @@ def test_empty_categories_and_combined_premises():
     all_a_b = (Quantifier.ALL, 0, 1)
     some_b_a = (Quantifier.SOME, 1, 0)
     assert not dataset._entails((all_a_b,), some_b_a)
-    # The other displayed premise can establish existence in A.
     assert dataset._entails((all_a_b, (Quantifier.SOME, 2, 0)), some_b_a)
-    # Premises can also force B empty, making every All B statement true.
+    # B is forced empty.
     assert dataset._entails(((Quantifier.NO, 0, 1), (Quantifier.ALL, 1, 0)), (Quantifier.ALL, 1, 2))
-    # A generated inversion of premise 2 needs premise 1's existence witness.
+    # Inverting premise 2 requires premise 1's existence witness.
     assert dataset._entails(((Quantifier.SOME, 0, 1), (Quantifier.ALL, 1, 2)), (Quantifier.SOME, 2, 1))
     assert not dataset._is_valid_syllogism(all_a_b, (Quantifier.ALL, 1, 2), (Quantifier.SOME, 0, 2))
 

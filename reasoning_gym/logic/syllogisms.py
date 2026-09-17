@@ -49,8 +49,7 @@ class SyllogismConfig:
     allow_some: bool = True
     allow_some_not: bool = True
 
-    # Target fraction of invalid examples (0.0 to 1.0). If the allowed
-    # quantifiers cannot produce that class, use the available class instead.
+    # Target invalid fraction; use the available class if the target is impossible.
     invalid_ratio: float = 0.3
 
     # Probability of generating inversion problems instead of syllogisms (0.0 to 1.0)
@@ -134,12 +133,9 @@ class SyllogismDataset(ProceduralDataset):
     @staticmethod
     @lru_cache(maxsize=None)
     def _entails_indexed(premises: tuple, conclusion: tuple, num_terms: int) -> bool:
-        """Exact entailment over Venn-region occupancy (at most 256 models).
+        """Check all Venn-region occupancies (at most 256 models).
 
-        Each of the 2**num_terms regions is either occupied or empty. Categorical
-        statements cannot distinguish one member from multiple members in a
-        region, so these models exhaust all interpretations, including empty
-        categories. Region zero represents objects outside every category.
+        One member per occupied region suffices for categorical statements.
         """
         if not 1 <= num_terms <= 3:
             raise ValueError("Expected one to three categories")
@@ -167,7 +163,7 @@ class SyllogismDataset(ProceduralDataset):
 
     @staticmethod
     def _entails(premises: tuple, conclusion: tuple) -> bool:
-        """Check the conclusion against all premises, with empty categories allowed."""
+        """Check entailment with empty categories allowed."""
         terms = list(dict.fromkeys(term for statement in (*premises, conclusion) for term in statement[1:]))
 
         def indexed(statement):
@@ -184,7 +180,7 @@ class SyllogismDataset(ProceduralDataset):
         premise2: tuple[Quantifier, "Term", "Term"],
         conclusion: tuple[Quantifier, "Term", "Term"],
     ) -> bool:
-        """Check a three-category syllogism using modern, empty-set semantics."""
+        """Check a three-category syllogism."""
         common_terms = set(premise1[1:]) & set(premise2[1:])
         all_terms = set(premise1[1:]) | set(premise2[1:])
         if len(common_terms) != 1 or len(all_terms) != 3:
@@ -203,13 +199,13 @@ class SyllogismDataset(ProceduralDataset):
     def _check_logical_equivalence(
         self, premise: tuple[Quantifier, Term, Term], conclusion: tuple[Quantifier, Term, Term]
     ) -> bool:
-        """Compatibility helper: check one-way entailment, not equivalence."""
+        """Check one-way entailment, not equivalence."""
         return self._entails((premise,), conclusion)
 
     @staticmethod
     @lru_cache(maxsize=None)
     def _candidate_forms(quantifiers: tuple[Quantifier, ...], inversion: bool) -> tuple:
-        """Partition every supported form by exact validity, respecting allowed quantifiers."""
+        """Group allowed forms by validity."""
         candidates = ([], [])
         for q1, q2, qc in product(quantifiers, repeat=3):
             premise1, premise2 = (q1, 0, 1), (q2, 1, 2)
@@ -221,11 +217,7 @@ class SyllogismDataset(ProceduralDataset):
         return tuple(tuple(group) for group in candidates)
 
     def _generate_syllogism(self, rng: Random, idx: int) -> dict:
-        """Generate a problem, grading every displayed premise together.
-
-        invalid_ratio is a target: when the allowed quantifiers admit no forms
-        of the requested validity, sample the available class instead.
-        """
+        """Generate a problem using both premises."""
         terms = rng.sample(self.terms, 3)
         inversion = rng.random() < self.config.inversion_probability
         target_valid = rng.random() >= self.config.invalid_ratio
